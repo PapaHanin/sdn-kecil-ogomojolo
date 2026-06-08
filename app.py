@@ -93,6 +93,103 @@ def kirim_wa_link(no_wa, nama_siswa, kelas, status, konteks_absen="Hari ini"):
     pesan_encoded = urllib.parse.quote(pesan)
     return f"https://wa.me/{clean_wa}?text={pesan_encoded}"
 
+# Fungsi bantu cetak surat resmi
+def buat_surat_html(nama_siswa, kelas, nisn, alasan, detail_kasus="-"):
+    hari_ini_str = datetime.date.today().strftime("%d %B %Y")
+    
+    html_content = f'''
+    <div style="font-family: 'Times New Roman', Times, serif; padding: 20px; color: #000; background: #fff;">
+        <div style="text-align: center; border-bottom: 5px double #000; padding-bottom: 10px; margin-bottom: 20px;">
+            <h3 style="margin: 0; text-transform: uppercase; font-size: 18px; color: #000;">PEMERINTAH KABUPATEN / KOTA</h3>
+            <h2 style="margin: 5px 0; text-transform: uppercase; font-size: 22px; color: #000;">DINAS PENDIDIKAN DAN KEBUDAYAAN</h2>
+            <h1 style="margin: 5px 0; text-transform: uppercase; font-size: 24px; font-weight: bold; color: #000;">SATUAN PENDIDIKAN KELAS PREMIUM</h1>
+            <p style="margin: 0; font-size: 12px; font-style: italic; color: #000;">Alamat: Jalan Raya Pendidikan No. 1, Kode Pos 12345 Telp. (021) 123456</p>
+        </div>
+        
+        <table style="width: 100%; font-size: 14px; margin-bottom: 20px; color: #000;">
+            <tr>
+                <td style="width: 15%; color: #000;">Nomor</td>
+                <td style="width: 2%; color: #000;">:</td>
+                <td style="width: 48%; color: #000;">005 / SP-Premium / PANG / 2026</td>
+                <td style="width: 35%; text-align: right; color: #000;">{hari_ini_str}</td>
+            </tr>
+            <tr>
+                <td style="color: #000;">Sifat</td>
+                <td style="color: #000;">:</td>
+                <td style="color: #000;">Penting</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td style="color: #000;">Lampiran</td>
+                <td style="color: #000;">:</td>
+                <td style="color: #000;">-</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td style="color: #000;">Perihal</td>
+                <td style="color: #000;">:</td>
+                <td style="color: #000;"><b>Surat Pemanggilan Orang Tua / Wali Murid</b></td>
+                <td></td>
+            </tr>
+        </table>
+        
+        <p style="font-size: 14px; margin-bottom: 20px; color: #000;">
+            Kepada Yth.<br>
+            Bapak/Ibu Orang Tua / Wali dari <b>{nama_siswa}</b> (Kelas: {kelas} / NISN: {nisn})<br>
+            di Tempat
+        </p>
+        
+        <p style="font-size: 14px; text-align: justify; line-height: 1.5; text-indent: 40px; color: #000;">
+            Dengan hormat, Sehubungan dengan adanya hal penting yang perlu dikoordinasikan terkait perkembangan proses belajar mengajar anak didik kita, maka dengan ini kami mengharapkan kehadiran Bapak/Ibu Orang Tua / Wali Murid pada:
+        </p>
+        
+        <table style="width: 90%; margin: 20px auto; font-size: 14px; line-height: 1.6; color: #000;">
+            <tr>
+                <td style="width: 25%; color: #000;">Hari / Tanggal</td>
+                <td style="width: 3%; color: #000;">:</td>
+                <td style="color: #000;">Sesuai Kesepakatan / Segera Setelah Menerima Surat Ini</td>
+            </tr>
+            <tr>
+                <td style="color: #000;">Waktu</td>
+                <td style="color: #000;">:</td>
+                <td style="color: #000;">08.00 WIB s.d Selesai (Jam Kerja Sekolah)</td>
+            </tr>
+            <tr>
+                <td style="color: #000;">Tempat</td>
+                <td style="color: #000;">:</td>
+                <td style="color: #000;">Ruang Kepala Sekolah / Ruang BK / Ruang Guru</td>
+            </tr>
+            <tr>
+                <td style="color: #000;">Keperluan</td>
+                <td style="color: #000;">:</td>
+                <td style="color: #000;">
+                    Koordinasi dan Klarifikasi terkait pelanggaran/catatan: <br>
+                    <span style="color: red; font-weight: bold;">[ {alasan} ]</span> <br>
+                    <i>Detail Catatan: {detail_kasus}</i>
+                </td>
+            </tr>
+        </table>
+        
+        <p style="font-size: 14px; text-align: justify; line-height: 1.5; text-indent: 40px; margin-bottom: 30px; color: #000;">
+            Mengingat pentingnya permasalahan ini demi kebaikan masa depan putra/putri Bapak/Ibu, kami sangat mengharapkan kehadiran Bapak/Ibu tepat pada waktunya dan tidak diwakilkan. Demikian surat undangan ini kami sampaikan, atas perhatian dan kerja samanya kami ucapkan terima kasih.
+        </p>
+        
+        <table style="width: 100%; font-size: 14px; margin-top: 40px; color: #000;">
+            <tr>
+                <td style="width: 60%;"></td>
+                <td style="text-align: center; color: #000;">
+                    Mengetahui,<br>
+                    <b>Kepala Satuan Pendidikan</b>
+                    <br><br><br><br><br>
+                    <u><b>( ____________________________ )</b></u><br>
+                    NIP. ........................................
+                </td>
+            </tr>
+        </table>
+    </div>
+    '''
+    return html_content
+
 # ==========================================
 # HALAMAN LOGIN SYSTEM
 # ==========================================
@@ -130,42 +227,46 @@ if not st.session_state.logged_in:
 st.sidebar.markdown(f"**Pengguna:** {st.session_state.nama} ({st.session_state.role})")
 if st.session_state.role == "Guru":
     st.sidebar.info(f"📍 **Hak Akses:** Kelas {st.session_state.kelas_tugas}")
-if st.sidebar.button("Keluar dari Aplikasi", use_container_width=True):
-    st.session_state.logged_in = False
-    st.rerun()
 
 # ==========================================
 # INTERFACE: DASHBOARD ADMIN (KEPALA SEKOLAH)
 # ==========================================
 if st.session_state.role == "Admin":
+    st.sidebar.markdown("### 🏛️ MENU UTAMA KEPSEK")
+    menu_admin = st.sidebar.radio("Pilih Menu Panel:", [
+        "📊 Grafik Analisis Makro",
+        "📥 Kotak Aduan & Curhat Guru",
+        "🚨 Rekap Siswa Bermasalah",
+        "✉️ Surat Pemanggilan Ortu",
+        "🔄 Kenaikan Kelas Massal",
+        "📝 Laporan Tindak Lanjut Guru",
+        "📑 Cetak Laporan Bulanan",
+        "👥 Manajemen Akun Guru"
+    ])
+    
+    if st.sidebar.button("Keluar dari Aplikasi", use_container_width=True):
+        st.session_state.logged_in = False
+        st.rerun()
+
     st.title("🏛️ Panel Utama Kepala Sekolah (Premium Admin)")
     
     tgl_pantau = st.date_input("Pilih Tanggal Pantauan Laporan", datetime.date.today())
-    
     conn = get_db_connection()
     total_siswa = conn.execute("SELECT COUNT(*) FROM siswa").fetchone()[0]
     total_hadir = conn.execute("SELECT COUNT(*) FROM absensi WHERE tanggal=? AND status='hadir' AND jam_ke='Harian'", (str(tgl_pantau),)).fetchone()[0]
     total_sakit = conn.execute("SELECT COUNT(*) FROM absensi WHERE tanggal=? AND status='sakit' AND jam_ke='Harian'", (str(tgl_pantau),)).fetchone()[0]
     total_alpa = conn.execute("SELECT COUNT(*) FROM absensi WHERE tanggal=? AND status='tidak_hadir' AND jam_ke='Harian'", (str(tgl_pantau),)).fetchone()[0]
     conn.close()
-    
     persen_hadir = (total_hadir / total_siswa * 100) if total_siswa > 0 else 0
     
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    with col_m1:
-        st.metric(label="Total Siswa Terdaftar", value=f"{total_siswa} Anak")
-    with col_m2:
-        st.metric(label="Persentase Kehadiran Pagi (Harian)", value=f"{persen_hadir:.1f}%")
-    with col_m3:
-        st.metric(label="Siswa Sakit / Izin Harian", value=f"{total_sakit} Anak")
-    with col_m4:
-        st.metric(label="Siswa Alpa Harian", value=f"{total_alpa} Anak")
-        
+    with col_m1: st.metric(label="Total Siswa Terdaftar", value=f"{total_siswa} Anak")
+    with col_m2: st.metric(label="Persentase Kehadiran Pagi (Harian)", value=f"{persen_hadir:.1f}%")
+    with col_m3: st.metric(label="Siswa Sakit / Izin Harian", value=f"{total_sakit} Anak")
+    with col_m4: st.metric(label="Siswa Alpa Harian", value=f"{total_alpa} Anak")
     st.write("---")
-    
-    tabs = st.tabs(["📊 Grafik Analisis Makro", "📥 Kotak Aduan & Curhat Guru", "🚨 Rekap Siswa Bermasalah", "🔄 Kenaikan Kelas Massal", "📝 Laporan Tindak Lanjut Guru", "📑 Cetak Laporan Bulanan", "👥 Manajemen Akun Guru"])
-    
-    with tabs[0]:
+
+    if menu_admin == "📊 Grafik Analisis Makro":
         st.subheader("Analisis Grafik Kehadiran Siswa (Umum/Harian)")
         conn = get_db_connection()
         df_absensi = pd.read_sql_query('''
@@ -184,7 +285,7 @@ if st.session_state.role == "Admin":
         else:
             st.info("Belum ada transaksi absensi masuk pada tanggal terpilih.")
 
-    with tabs[1]:
+    elif menu_admin == "📥 Kotak Aduan & Curhat Guru":
         st.subheader("📥 Kotak Masuk Aduan, Saran, & Curcuran Hati Guru")
         st.info("Halaman ini hanya bisa diakses oleh Kepala Sekolah. Semua masukan bersifat rahasia untuk menjaga keterbukaan komunikasi sekolah.")
         
@@ -213,7 +314,7 @@ if st.session_state.role == "Admin":
                             st.success("Tanggapan berhasil disimpan!")
                             st.rerun()
 
-    with tabs[2]:
+    elif menu_admin == "🚨 Rekap Siswa Bermasalah":
         st.subheader("🚨 Daftar Kronis Siswa Bermasalah (Sering Alpa)")
         st.write("Sistem menyaring otomatis siswa yang memiliki akumulasi Alpa terbanyak di sekolah untuk tindakan preventif.")
         
@@ -235,7 +336,68 @@ if st.session_state.role == "Admin":
         else:
             st.dataframe(df_kronis_admin, use_container_width=True)
 
-    with tabs[3]:
+    elif menu_admin == "✉️ Surat Pemanggilan Ortu":
+        st.subheader("✉️ Generator Surat Pemanggilan Orang Tua / Wali Siswa Otomatis")
+        st.write("Gunakan fitur ini untuk membuat surat resmi fisik/cetak bagi siswa yang bermasalah (Sering Alfa, Bolos, Tawuran, Perundungan, dll).")
+        
+        conn = get_db_connection()
+        list_siswa_db = conn.execute("SELECT nisn, nama, kelas FROM siswa ORDER BY kelas, nama").fetchall()
+        conn.close()
+        
+        if not list_siswa_db:
+            st.warning("Belum ada data siswa dalam database sekolah.")
+        else:
+            opsi_siswa = [f"{r[1]} ({r[2]}) - NISN: {r[0]}" for r in list_siswa_db]
+            
+            with st.form("form_surat_resmi"):
+                siswa_terpilih_str = st.selectbox("Cari dan Pilih Siswa Bermasalah:", opsi_siswa)
+                index_terpilih = opsi_siswa.index(siswa_terpilih_str)
+                siswa_data = list_siswa_db[index_terpilih]
+                
+                jenis_cases = st.selectbox("Jenis Pelanggaran / Alasan Pemanggilan:", [
+                    "Akumulasi Absensi Alpa Terlalu Banyak (3-5 Kali / Lebih)",
+                    "Siswa Sering Bolos Saat Jam Pelajaran Berlangsung",
+                    "Membuat Keonaran / Keributan di Lingkungan Sekolah",
+                    "Terlibat Tindakan Perundungan (Bullying) / Kekerasan Fisik",
+                    "Pelanggaran Aturan Ketertiban Berat Lainnya"
+                ])
+                
+                detail_tambahan = st.text_area("Detail/Catatan Tambahan Kasus (Misal: Alpa 4 hari berturut-turut, membully teman sekelas 7B):", placeholder="Tulis rincian kronologi singkat di sini...")
+                
+                tombol_generate = st.form_submit_button("🔥 Buat Draf Surat Resmi")
+                
+                if tombol_generate:
+                    html_surat = buat_surat_html(siswa_data[1], siswa_data[2], siswa_data[0], jenis_cases, detail_tambahan if detail_tambahan else "-")
+                    st.session_state['html_surat_temp'] = html_surat
+                    st.session_state['nama_siswa_temp'] = siswa_data[1]
+                    st.success("Surat Berhasil Dibuat! Silakan lihat pratinjau di bawah ini.")
+            
+            if 'html_surat_temp' in st.session_state:
+                st.markdown("### 📄 Pratinjau Surat Resmi (Siap Cetak)")
+                
+                # --- PERBAIKAN TOTAL DI SINI (MENGGUNAKAN st.components.v1.html) ---
+                # Menggunakan iframe html agar terisolasi sempurna dan kotak hitam hilang total dari layar
+                st.components.v1.html(
+                    f"""
+                    <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #ccc; min-height: 600px;">
+                        {st.session_state['html_surat_temp']}
+                    </div>
+                    """,
+                    height=700,
+                    scrolling=True
+                )
+                # -------------------------------------------------------------------
+                
+                st.write("")
+                st.download_button(
+                    label="🖨️ Unduh Surat Resmi Untuk Dicetak (.html)",
+                    data=st.session_state['html_surat_temp'],
+                    file_name=f"Surat_Pemanggilan_{st.session_state['nama_siswa_temp']}.html",
+                    mime="text/html",
+                    use_container_width=True
+                )
+
+    elif menu_admin == "🔄 Kenaikan Kelas Massal":
         st.subheader("🔄 Fitur Kenaikan & Perpindahan Kelas Massal (Tahun Ajaran Baru)")
         conn = get_db_connection()
         list_kelas_asal = [r[0] for r in conn.execute("SELECT DISTINCT kelas FROM siswa WHERE kelas != ''").fetchall()]
@@ -259,7 +421,7 @@ if st.session_state.role == "Admin":
                 st.success(f"Sukses! Sebanyak {jumlah_terubah} siswa dari kelas {kelas_asal} dipindahkan ke kelas {kelas_tujuan}.")
                 st.rerun()
 
-    with tabs[4]:
+    elif menu_admin == "📝 Laporan Tindak Lanjut Guru":
         st.subheader("Pantauan Laporan Khusus Siswa Bermasalah (Alpa)")
         conn = get_db_connection()
         df_laporan = pd.read_sql_query('''
@@ -271,7 +433,7 @@ if st.session_state.role == "Admin":
         conn.close()
         st.dataframe(df_laporan, use_container_width=True)
 
-    with tabs[5]:
+    elif menu_admin == "📑 Cetak Laporan Bulanan":
         st.subheader("Ekspor Laporan Rekapitulasi Bulanan (Umum)")
         col_bln, col_thn = st.columns(2)
         with col_bln: bulan_pilih = st.selectbox("Pilih Bulan", [f"{i:02d}" for i in range(1, 13)], index=datetime.date.today().month - 1, key="bln_admin")
@@ -297,7 +459,7 @@ if st.session_state.role == "Admin":
                 st.download_button(label="📥 Unduh File Rekap Absensi (.xlsx)", data=buffer.getvalue(), file_name=f"Rekap_Absensi_{bulan_pilih}_{tahun_pilih}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             else: st.warning("Tidak ditemukan data absensi pada periode bulan ini.")
 
-    with tabs[6]:
+    elif menu_admin == "👥 Manajemen Akun Guru":
         st.subheader("Registrasi & Manajemen Akun Guru")
         col_input, col_list = st.columns([1, 2])
         with col_input:
@@ -337,10 +499,8 @@ if st.session_state.role == "Admin":
                             check_hapus = st.checkbox("Saya ingin menghapus akun ini", key=f"del_chk_{row['Username/NIP']}")
                             
                             col_btn1, col_btn2 = st.columns(2)
-                            with col_btn1:
-                                btn_simpan = st.form_submit_button("💾 Simpan Perubahan", use_container_width=True)
-                            with col_btn2:
-                                btn_hapus = st.form_submit_button("🗑️ Hapus Akun Ini", use_container_width=True)
+                            with col_btn1: btn_simpan = st.form_submit_button("💾 Simpan Perubahan", use_container_width=True)
+                            with col_btn2: btn_hapus = st.form_submit_button("🗑️ Hapus Akun Ini", use_container_width=True)
                                 
                             if btn_simpan:
                                 conn = get_db_connection()
@@ -375,6 +535,10 @@ elif st.session_state.role == "Guru":
         "📥 Sinkronisasi Data Dapodik"
     ])
     
+    if st.sidebar.button("Keluar dari Aplikasi", use_container_width=True):
+        st.session_state.logged_in = False
+        st.rerun()
+        
     hak_akses = st.session_state.kelas_tugas.strip().upper()
     conn = get_db_connection()
     list_kelas_db = [r[0] for r in conn.execute("SELECT DISTINCT kelas FROM siswa WHERE kelas != '' AND kelas != '-'").fetchall()]
@@ -386,9 +550,6 @@ elif st.session_state.role == "Guru":
 
     hari_ini = str(datetime.date.today())
 
-    # --------------------------------------
-    # SUBMENU GURU: REKAP SISWA BERMASALAH KELAS SAYA (UTUH)
-    # --------------------------------------
     if menu_guru == "🚨 Rekap Siswa Bermasalah Kelas Saya":
         st.subheader(f"🚨 Daftar Siswa Bermasalah (Sering Alpa) — Kelas {pilihan_kelas}")
         st.write("Siswa di bawah ini diurutkan berdasarkan akumulasi ketidakhadiran (Alpa) paling tinggi di kelas Anda.")
@@ -410,9 +571,6 @@ elif st.session_state.role == "Guru":
         else:
             st.dataframe(df_kronis_guru, use_container_width=True)
 
-    # --------------------------------------
-    # SUBMENU GURU: POJOK CURHAT & KOTAK SARAN RAHASIA (UTUH)
-    # --------------------------------------
     elif menu_guru == "📬 Pojok Curhat & Saran ke Kepsek":
         st.subheader("📬 Pojok Curhat & Kotak Saran Guru (Rahasia & Langsung ke Kepsek)")
         st.write("Punya kendala belajar, saran sekolah, atau komplain kehadiran guru lain yang enggan dibahas saat rapat? Sampaikan di sini secara tertutup.")
@@ -422,13 +580,11 @@ elif st.session_state.role == "Guru":
             isi_aduan = st.text_area("Tuliskan pesan, kronologi, atau saran Anda secara lengkap:")
             
             if st.form_submit_button("🚀 Kirim Rahasia ke Kepala Sekolah"):
-                if isi_aduan.strip() == "":
-                    st.error("Isi pesan tidak boleh kosong!")
+                if isi_aduan.strip() == "": st.error("Isi pesan tidak boleh kosong!")
                 else:
                     conn = get_db_connection()
                     c = conn.cursor()
-                    c.execute("INSERT INTO aduan_curhat (tanggal, guru_pengirim, jenis_aduan, isi_curhat) VALUES (?, ?, ?, ?)",
-                              (hari_ini, st.session_state.nama, kategori_aduan, isi_aduan))
+                    c.execute("INSERT INTO aduan_curhat (tanggal, guru_pengirim, jenis_aduan, isi_curhat) VALUES (?, ?, ?, ?)", (hari_ini, st.session_state.nama, kategori_aduan, isi_aduan))
                     conn.commit()
                     conn.close()
                     st.success("Sukses! Pesan Anda telah terkirim langsung ke meja digital Kepala Sekolah.")
@@ -438,15 +594,9 @@ elif st.session_state.role == "Guru":
         conn = get_db_connection()
         df_riwayat_curhat = pd.read_sql_query("SELECT tanggal as [Tanggal], jenis_aduan as [Kategori], isi_curhat as [Aduan Saya], status_tindak_lanjut as [Status Kepsek], catatan_kepsek as [Tanggapan Kepsek] FROM aduan_curhat WHERE guru_pengirim = ? ORDER BY id DESC", conn, params=(st.session_state.nama,))
         conn.close()
-        
-        if df_riwayat_curhat.empty:
-            st.caption("Belum ada riwayat curhat sebelumnya.")
-        else:
-            st.dataframe(df_riwayat_curhat, use_container_width=True)
+        if df_riwayat_curhat.empty: st.caption("Belum ada riwayat curhat sebelumnya.")
+        else: st.dataframe(df_riwayat_curhat, use_container_width=True)
 
-    # --------------------------------------
-    # SUBMENU GURU: REKAP BULANAN (UTUH)
-    # --------------------------------------
     elif menu_guru == "📑 Rekap Bulanan Kelas Saya":
         st.subheader(f"📑 Menu Rekapitulasi Kehadiran Bulanan — Kelas {pilihan_kelas}")
         col_g1, col_g2 = st.columns(2)
@@ -473,9 +623,6 @@ elif st.session_state.role == "Guru":
                 st.download_button(label=f"📥 Download File Excel Kelas {pilihan_kelas}", data=buffer.getvalue(), file_name=f"Rekap_{pilihan_kelas}_{g_bulan}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
             else: st.warning("Tidak ditemukan data absensi periode bulan ini.")
 
-    # --------------------------------------
-    # SUBMENU GURU: SINKRONISASI DATA DAPODIK (UTUH & LENGKAP FITUR LAMA)
-    # --------------------------------------
     elif menu_guru == "📥 Sinkronisasi Data Dapodik":
         st.subheader(f"Unggah Template Siswa Khusus Kelas {pilihan_kelas}")
         columns_template = ['Kelas', 'Nama', 'NISN', 'NIS', 'Tempat Lahir', 'Tanggal Lahir', 'Agama', 'NIK', 'Alamat', 'Nama Ayah', 'Pekerjaan Ayah', 'Nama Ibu', 'Pekerjaan Ibu', 'No WA Orang Tua']
@@ -483,7 +630,6 @@ elif st.session_state.role == "Guru":
         tpl_buffer = io.BytesIO()
         with pd.ExcelWriter(tpl_buffer, engine='openpyxl') as writer: df_tpl.to_excel(writer, index=False)
         st.download_button(label="📄 Download Format Template Excel Dapodik", data=tpl_buffer.getvalue(), file_name=f"template_dapodik_kelas_{pilihan_kelas}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        
         uploaded_file = st.file_uploader("Upload File Excel Template Dapodik (.xlsx)", type=["xlsx"])
         if uploaded_file is not None:
             try:
@@ -515,20 +661,15 @@ elif st.session_state.role == "Guru":
                 m_tl = st.text_input("Tempat Lahir")
                 m_tgl = st.text_input("Tanggal Lahir")
                 m_alamat = st.text_area("Alamat Rumah")
-                
             submit_manual = st.form_submit_button("Simpan Data Siswa")
             if submit_manual and m_nisn and m_nama:
                 conn = get_db_connection()
                 c = conn.cursor()
-                c.execute("INSERT OR REPLACE INTO siswa (nisn, nama, kelas, nis, tempat_lahir, tanggal_lahir, no_wa_orang_tua, alamat) VALUES (?,?,?,?,?,?,?,?)",
-                          (m_nisn, m_nama, pilihan_kelas, m_nis, m_tl, m_tgl, m_wa, m_alamat))
+                c.execute("INSERT OR REPLACE INTO siswa (nisn, nama, kelas, nis, tempat_lahir, tanggal_lahir, no_wa_orang_tua, alamat) VALUES (?,?,?,?,?,?,?,?)", (m_nisn, m_nama, pilihan_kelas, m_nis, m_tl, m_tgl, m_wa, m_alamat))
                 conn.commit()
                 conn.close()
                 st.success(f"Siswa {m_nama} berhasil dimasukkan ke kelas {pilihan_kelas}!")
 
-    # --------------------------------------
-    # SUBMENU GURU: INPUT ABSENSI HARIAN (LENGKAP SEMUA FORM EDIT & TAMBAH CEPAT)
-    # --------------------------------------
     elif menu_guru == "📝 Input Absensi Harian":
         st.subheader(f"Isi Kehadiran Kelas Real-time")
         mode_absen = st.radio("Pilih Mode Pengisian Absen:", ["Wali Kelas / Umum (Harian)", "Mata Pelajaran (Per Jam Pelajaran)"], horizontal=True)
@@ -544,37 +685,31 @@ elif st.session_state.role == "Guru":
             
         st.info(f"📋 **Kelas:** {pilihan_kelas} | 📚 **Mode:** {val_mapel} ({val_jam}) | 📅 **Tanggal:** {hari_ini}")
         
-        # FITUR LAMA: EXPANDER TAMBAH SISWA DI TENGAH SEMESTER (DIPERTAHANKAN UTUH)
         with st.expander("➕ Tambah Siswa Baru Di Tengah Semester"):
             with st.form(f"form_cepat_tambah_{pilihan_kelas}", clear_on_submit=True):
                 c_nama = st.text_input("Nama Lengkap Siswa Baru")
                 c_nisn = st.text_input("NISN Siswa Baru")
                 c_wa = st.text_input("No WA Orang Tua")
                 submit_cepat = st.form_submit_button("Simpan Siswa Baru")
-                
                 if submit_cepat and c_nama and c_nisn:
                     conn = get_db_connection()
                     c = conn.cursor()
                     try:
-                        c.execute("INSERT INTO siswa (nisn, nama, kelas, no_wa_orang_tua) VALUES (?, ?, ?, ?)", 
-                                  (c_nisn, c_nama, pilihan_kelas, c_wa))
+                        c.execute("INSERT INTO siswa (nisn, nama, kelas, no_wa_orang_tua) VALUES (?, ?, ?, ?)", (c_nisn, c_nama, pilihan_kelas, c_wa))
                         conn.commit()
                         st.success(f"Berhasil menambahkan {c_nama} ke kelas {pilihan_kelas}!")
                         st.rerun()
-                    except sqlite3.IntegrityError:
-                        st.error("Gagal! NISN sudah terdaftar.")
-                    finally:
-                        conn.close()
+                    except sqlite3.IntegrityError: st.error("Gagal! NISN sudah terdaftar.")
+                    finally: conn.close()
         
         conn = get_db_connection()
-        query = '''
+        df_siswa_kelas = pd.read_sql_query('''
             SELECT s.nisn, s.nama, s.no_wa_orang_tua, s.nis, s.kelas, a.status 
             FROM siswa s 
             LEFT JOIN absensi a ON s.nisn = a.nisn AND a.tanggal = ? AND a.mapel = ? AND a.jam_ke = ?
             WHERE s.kelas = ?
             ORDER BY s.nama ASC
-        '''
-        df_siswa_kelas = pd.read_sql_query(query, conn, params=(hari_ini, val_mapel, val_jam, pilihan_kelas))
+        ''', conn, params=(hari_ini, val_mapel, val_jam, pilihan_kelas))
         conn.close()
         
         if df_siswa_kelas.empty:
@@ -591,8 +726,7 @@ elif st.session_state.role == "Guru":
                 for _, row in df_siswa_kelas.iterrows():
                     status_db = str(row['status']).strip().lower() if row['status'] else 'belum'
                     if status_db not in ['hadir', 'sakit', 'tidak_hadir']:
-                        c.execute('''INSERT OR REPLACE INTO absensi (nisn, tanggal, mapel, jam_ke, status, waktu, guru_input) 
-                                     VALUES (?, ?, ?, ?, 'hadir', ?, ?)''', (row['nisn'], hari_ini, val_mapel, val_jam, waktu_sekarang, st.session_state.username))
+                        c.execute('''INSERT OR REPLACE INTO absensi (nisn, tanggal, mapel, jam_ke, status, waktu, guru_input) VALUES (?, ?, ?, ?, 'hadir', ?, ?)''', (row['nisn'], hari_ini, val_mapel, val_jam, waktu_sekarang, st.session_state.username))
                         bulk_count += 1
                 conn.commit()
                 conn.close()
@@ -637,7 +771,6 @@ elif st.session_state.role == "Guru":
                     elif status_phelan == 'sakit': st.write("🤒 Sakit")
                     else: st.write("⏳ Belum Absen")
                     
-                # FITUR LAMA: KELOLA EDIT DATA SISWA & HAPUS MANUAL (DIPERTAHANKAN UTUH & AMAN)
                 with col_crud:
                     with st.expander("⚙️ Kelola"):
                         with st.form(f"form_crud_siswa_{row['nisn']}"):
@@ -646,34 +779,25 @@ elif st.session_state.role == "Guru":
                             e_wa_sis = st.text_input("No WA Orang Tua", value=row['no_wa_orang_tua'])
                             e_kelas_sis = st.text_input("Kelas", value=row['kelas'])
                             check_hapus_sis = st.checkbox("Centang untuk menghapus siswa ini", key=f"del_sis_chk_{row['nisn']}")
-                            
-                            c_btn1, c_btn2 = st.columns(2)
-                            with c_btn1:
-                                btn_save_sis = st.form_submit_button("💾 Update")
-                            with c_btn2:
-                                btn_del_sis = st.form_submit_button("🗑️ Hapus")
-                                
+                            col_btn1, col_btn2 = st.columns(2)
+                            with col_btn1: btn_save_sis = st.form_submit_button("💾 Update")
+                            with col_btn2: btn_del_sis = st.form_submit_button("🗑️ Hapus")
                             if btn_save_sis:
                                 conn = get_db_connection()
                                 c = conn.cursor()
-                                c.execute("UPDATE siswa SET nama=?, no_wa_orang_tua=?, kelas=? WHERE nisn=?", 
-                                          (e_nama_sis, e_wa_sis, e_kelas_sis.strip().upper(), row['nisn']))
+                                c.execute("UPDATE siswa SET nama=?, no_wa_orang_tua=?, kelas=? WHERE nisn=?", (e_nama_sis, e_wa_sis, e_kelas_sis.strip().upper(), row['nisn']))
                                 conn.commit()
                                 conn.close()
                                 st.success("Data siswa diperbarui!")
+                                r_absen = st.rerun()
+                            if btn_del_sis and check_hapus_sis:
+                                conn = get_db_connection()
+                                c = conn.cursor()
+                                c.execute("DELETE FROM absensi WHERE nisn=?", (row['nisn'],))
+                                c.execute("DELETE FROM laporan_tindak_lanjut WHERE nisn=?", (row['nisn'],))
+                                c.execute("DELETE FROM siswa WHERE nisn=?", (row['nisn'],))
+                                conn.commit()
+                                conn.close()
+                                st.success("Siswa dihapus!")
                                 st.rerun()
-                                
-                            if btn_del_sis:
-                                if check_hapus_sis:
-                                    conn = get_db_connection()
-                                    c = conn.cursor()
-                                    c.execute("DELETE FROM absensi WHERE nisn=?", (row['nisn'],))
-                                    c.execute("DELETE FROM laporan_tindak_lanjut WHERE nisn=?", (row['nisn'],))
-                                    c.execute("DELETE FROM siswa WHERE nisn=?", (row['nisn'],))
-                                    conn.commit()
-                                    conn.close()
-                                    st.success("Siswa dihapus!")
-                                    st.rerun()
-                                else:
-                                    st.error("Wajib centang kotak konfirmasi!")
                 st.markdown("</div>", unsafe_allow_html=True)
