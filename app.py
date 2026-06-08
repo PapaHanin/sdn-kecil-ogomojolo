@@ -54,6 +54,21 @@ def init_db():
                     isi_curhat TEXT,
                     status_tindak_lanjut TEXT DEFAULT 'Belum Dibaca',
                     catatan_kepsek TEXT DEFAULT '-')''')
+                    
+    # FITUR BARU: Tabel Penyimpan Biodata & Kop Sekolah Otomatis
+    c.execute('''CREATE TABLE IF NOT EXISTS biodata_sekolah (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    nama_kab_kota TEXT DEFAULT 'PEMERINTAH KABUPATEN / KOTA',
+                    nama_dinas TEXT DEFAULT 'DINAS PENDIDIKAN DAN KEBUDAYAAN',
+                    nama_sekolah TEXT DEFAULT 'SATUAN PENDIDIKAN KELAS PREMIUM',
+                    alamat_sekolah TEXT DEFAULT 'Alamat: Jalan Raya Pendidikan No. 1, Kode Pos 12345 Telp. (021) 123456',
+                    nama_kepsek TEXT DEFAULT '____________________________',
+                    nip_kepsek TEXT DEFAULT '........................................')''')
+    
+    # Isi data bawaan awal jika tabel biodata masih kosong
+    c.execute("SELECT COUNT(*) FROM biodata_sekolah")
+    if c.fetchone()[0] == 0:
+        c.execute("INSERT INTO biodata_sekolah (id) VALUES (1)")
     
     try:
         c.execute("ALTER TABLE absensi ADD COLUMN mapel TEXT DEFAULT 'Wali Kelas / Umum'")
@@ -84,6 +99,20 @@ if 'logged_in' not in st.session_state:
 def get_db_connection():
     return sqlite3.connect(DB_FILE)
 
+# FITUR BARU: Ambil data biodata sekolah untuk Kop & Ttd Otomatis
+def ambil_biodata_sekolah():
+    conn = get_db_connection()
+    res = conn.execute("SELECT nama_kab_kota, nama_dinas, nama_sekolah, alamat_sekolah, nama_kepsek, nip_kepsek FROM biodata_sekolah WHERE id=1").fetchone()
+    conn.close()
+    return {
+        "kab_kota": res[0],
+        "dinas": res[1],
+        "sekolah": res[2],
+        "alamat": res[3],
+        "kepsek": res[4],
+        "nip_kepsek": res[5]
+    }
+
 def kirim_wa_link(no_wa, nama_siswa, kelas, status, konteks_absen="Hari ini"):
     clean_wa = ''.join(filter(str.isdigit, str(no_wa)))
     if clean_wa.startswith('0'):
@@ -93,24 +122,25 @@ def kirim_wa_link(no_wa, nama_siswa, kelas, status, konteks_absen="Hari ini"):
     pesan_encoded = urllib.parse.quote(pesan)
     return f"https://wa.me/{clean_wa}?text={pesan_encoded}"
 
-# Fungsi bantu cetak surat resmi
+# Fungsi bantu cetak surat resmi pemanggilan ortu (Sudah Otomatis Biodata DB)
 def buat_surat_html(nama_siswa, kelas, nisn, alasan, detail_kasus="-"):
     hari_ini_str = datetime.date.today().strftime("%d %B %Y")
+    bio = ambil_biodata_sekolah()
     
     html_content = f'''
     <div style="font-family: 'Times New Roman', Times, serif; padding: 20px; color: #000; background: #fff;">
         <div style="text-align: center; border-bottom: 5px double #000; padding-bottom: 10px; margin-bottom: 20px;">
-            <h3 style="margin: 0; text-transform: uppercase; font-size: 18px; color: #000;">PEMERINTAH KABUPATEN / KOTA</h3>
-            <h2 style="margin: 5px 0; text-transform: uppercase; font-size: 22px; color: #000;">DINAS PENDIDIKAN DAN KEBUDAYAAN</h2>
-            <h1 style="margin: 5px 0; text-transform: uppercase; font-size: 24px; font-weight: bold; color: #000;">SATUAN PENDIDIKAN KELAS PREMIUM</h1>
-            <p style="margin: 0; font-size: 12px; font-style: italic; color: #000;">Alamat: Jalan Raya Pendidikan No. 1, Kode Pos 12345 Telp. (021) 123456</p>
+            <h3 style="margin: 0; text-transform: uppercase; font-size: 18px; color: #000;">{bio['kab_kota']}</h3>
+            <h2 style="margin: 5px 0; text-transform: uppercase; font-size: 22px; color: #000;">{bio['dinas']}</h2>
+            <h1 style="margin: 5px 0; text-transform: uppercase; font-size: 24px; font-weight: bold; color: #000;">{bio['sekolah']}</h1>
+            <p style="margin: 0; font-size: 12px; font-style: italic; color: #000;">{bio['alamat']}</p>
         </div>
         
         <table style="width: 100%; font-size: 14px; margin-bottom: 20px; color: #000;">
             <tr>
                 <td style="width: 15%; color: #000;">Nomor</td>
                 <td style="width: 2%; color: #000;">:</td>
-                <td style="width: 48%; color: #000;">005 / SP-Premium / PANG / 2026</td>
+                <td style="width: 48%; color: #000;">421.2 / &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / SMP / 2026</td>
                 <td style="width: 35%; text-align: right; color: #000;">{hari_ini_str}</td>
             </tr>
             <tr>
@@ -171,7 +201,7 @@ def buat_surat_html(nama_siswa, kelas, nisn, alasan, detail_kasus="-"):
         </table>
         
         <p style="font-size: 14px; text-align: justify; line-height: 1.5; text-indent: 40px; margin-bottom: 30px; color: #000;">
-            Mengingat pentingnya permasalahan ini demi kebaikan masa depan putra/putri Bapak/Ibu, kami sangat mengharapkan kehadiran Bapak/Ibu tepat pada waktunya dan tidak diwakilkan. Demikian surat undangan ini kami sampaikan, atas perhatian dan kerja samanya kami ucapkan terima kasih.
+            Meningat pentingnya permasalahan ini demi kebaikan masa depan putra/putri Bapak/Ibu, kami sangat mengharapkan kehadiran Bapak/Ibu tepat pada waktunya dan tidak diwakilkan. Demikian surat undangan ini kami sampaikan, atas perhatian dan kerja samanya kami ucapkan terima kasih.
         </p>
         
         <table style="width: 100%; font-size: 14px; margin-top: 40px; color: #000;">
@@ -181,8 +211,8 @@ def buat_surat_html(nama_siswa, kelas, nisn, alasan, detail_kasus="-"):
                     Mengetahui,<br>
                     <b>Kepala Satuan Pendidikan</b>
                     <br><br><br><br><br>
-                    <u><b>( ____________________________ )</b></u><br>
-                    NIP. ........................................
+                    <u><b>( {bio['kepsek']} )</b></u><br>
+                    NIP. {bio['nip_kepsek']}
                 </td>
             </tr>
         </table>
@@ -190,11 +220,119 @@ def buat_surat_html(nama_siswa, kelas, nisn, alasan, detail_kasus="-"):
     '''
     return html_content
 
+# Fungsi pembentuk dokumen surat dinas rekap bulanan sekolah (Sudah Otomatis Biodata & Wali Kelas)
+def buat_rekap_dinas_html(kelas, bulan, tahun, df_rekap, nama_wali_kelas):
+    hari_ini_str = datetime.date.today().strftime("%d %B %Y")
+    bio = ambil_biodata_sekolah()
+    
+    baris_siswa_html = ""
+    for idx, row in df_rekap.iterrows():
+        status_keterangan = "Sangat Baik"
+        warna_teks = "#000"
+        if row['Total Alpa'] >= 3:
+            status_keterangan = "Butuh Pemanggilan"
+            warna_teks = "red"
+        elif row['Total Alpa'] > 0:
+            status_keterangan = "Peringatan Pembinaan"
+            warna_teks = "orange"
+            
+        baris_siswa_html += f'''
+        <tr>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center; color: #000;">{idx+1}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center; color: #000;">{row['NISN']}</td>
+            <td style="border: 1px solid #000; padding: 6px; color: #000;">{row['Nama Siswa']}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center; color: #000;">{row['Total Hadir']}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center; color: #000;">{row['Total Sakit/Izin']}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center; color: #000;">{row['Total Alpa']}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center; font-style: italic; color: {warna_teks}; font-weight: bold;">{status_keterangan}</td>
+        </tr>
+        '''
+
+    html_document = f'''
+    <div style="font-family: 'Times New Roman', Times, serif; padding: 20px; color: #000; background: #fff;">
+        <div style="text-align: center; border-bottom: 5px double #000; padding-bottom: 10px; margin-bottom: 20px;">
+            <h3 style="margin: 0; text-transform: uppercase; font-size: 18px; color: #000;">{bio['kab_kota']}</h3>
+            <h2 style="margin: 5px 0; text-transform: uppercase; font-size: 22px; color: #000;">{bio['dinas']}</h2>
+            <h1 style="margin: 5px 0; text-transform: uppercase; font-size: 24px; font-weight: bold; color: #000;">{bio['sekolah']}</h1>
+            <p style="margin: 0; font-size: 12px; font-style: italic; color: #000;">{bio['alamat']}</p>
+        </div>
+        
+        <div style="text-align: center; text-decoration: underline; text-transform: uppercase; font-weight: bold; font-size: 16px; margin-top: 10px; color: #000;">
+            LAPORAN REKAPITULASI ABSENSI BULANAN SISWA
+        </div>
+        <div style="text-align: center; font-size: 14px; margin-bottom: 25px; color: #000;">
+            Nomor: 421.2 / &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / SMP / {tahun}
+        </div>
+        
+        <table style="width: 100%; font-size: 14px; margin-bottom: 15px; color: #000; line-height: 1.6;">
+            <tr>
+                <td style="width: 20%; color: #000;">Fungsi Jabatan</td>
+                <td style="width: 2%; color: #000;">:</td>
+                <td style="width: 78%; color: #000;"><b>Guru Kelas / Wali Kelas</b></td>
+            </tr>
+            <tr>
+                <td style="color: #000;">Kelas</td>
+                <td style="color: #000;">:</td>
+                <td style="color: #000;"><b>{kelas}</b></td>
+            </tr>
+            <tr>
+                <td style="color: #000;">Periode Laporan</td>
+                <td style="color: #000;">:</td>
+                <td style="color: #000;">Bulan {bulan} Tahun {tahun}</td>
+            </tr>
+        </table>
+        
+        <p style="font-size: 14px; text-align: justify; text-indent: 40px; color: #000; margin-bottom: 15px;">
+            Berdasarkan hasil rekapitulasi data kehadiran digital pada Sistem Absensi Terpadu, berikut dilampirkan berkas laporan rekapitulasi siswa yang memerlukan perhatian khusus serta pengawasan berkala selama periode berjalan:
+        </p>
+        
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 25px;">
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="border: 1px solid #000; padding: 8px; text-align: center; color: #000;">No</th>
+                    <th style="border: 1px solid #000; padding: 8px; text-align: center; color: #000;">NISN</th>
+                    <th style="border: 1px solid #000; padding: 8px; text-align: left; color: #000;">Nama Siswa</th>
+                    <th style="border: 1px solid #000; padding: 8px; text-align: center; color: #000;">Hadir</th>
+                    <th style="border: 1px solid #000; padding: 8px; text-align: center; color: #000;">Sakit/Izin</th>
+                    <th style="border: 1px solid #000; padding: 8px; text-align: center; color: #000;">Alpa</th>
+                    <th style="border: 1px solid #000; padding: 8px; text-align: center; color: #000;">Keterangan Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {baris_siswa_html}
+            </tbody>
+        </table>
+        
+        <p style="font-size: 14px; text-align: justify; text-indent: 40px; color: #000; margin-bottom: 30px;">
+            Demikian laporan rekapitulasi bulanan ini dibuat dengan sebenar-benarnya untuk digunakan sebagai landasan berkas pembinaan kedisiplinan siswa, koordinasi berkala bersama orang tua/wali murid, serta arsip administratif sekolah.
+        </p>
+        
+        <table style="width: 100%; font-size: 14px; margin-top: 40px; color: #000;">
+            <tr>
+                <td style="width: 50%; text-align: center; vertical-align: top; color: #000;">
+                    Mengetahui,<br>
+                    <b>Kepala Satuan Pendidikan</b>
+                    <br><br><br><br><br>
+                    <u><b>( {bio['kepsek']} )</b></u><br>
+                    NIP. {bio['nip_kepsek']}
+                </td>
+                <td style="width: 50%; text-align: center; vertical-align: top; color: #000;">
+                    {hari_ini_str}<br>
+                    <b>Guru Kelas / Wali Kelas</b>
+                    <br><br><br><br><br>
+                    <u><b>( {nama_wali_kelas} )</b></u><br>
+                </td>
+            </tr>
+        </table>
+    </div>
+    '''
+    return html_document
+
 # ==========================================
 # HALAMAN LOGIN SYSTEM
 # ==========================================
 if not st.session_state.logged_in:
-    st.markdown("<h2 style='text-align: center; color: #4F46E5;'>💎 LOGIN ABSENSI DIGITAL PREMIUM</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #4F46E5;'>💎 ABSENSI DIGITAL SDN KECIL OGOMOJOLO</h2>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         with st.form("login_form"):
@@ -235,6 +373,7 @@ if st.session_state.role == "Admin":
     st.sidebar.markdown("### 🏛️ MENU UTAMA KEPSEK")
     menu_admin = st.sidebar.radio("Pilih Menu Panel:", [
         "📊 Grafik Analisis Makro",
+        "📥 Pengaturan Biodata & Kop Sekolah", # FITUR BARU: Menu Isian Biodata Sekolah
         "📥 Kotak Aduan & Curhat Guru",
         "🚨 Rekap Siswa Bermasalah",
         "✉️ Surat Pemanggilan Ortu",
@@ -266,7 +405,35 @@ if st.session_state.role == "Admin":
     with col_m4: st.metric(label="Siswa Alpa Harian", value=f"{total_alpa} Anak")
     st.write("---")
 
-    if menu_admin == "📊 Grafik Analisis Makro":
+    # PANEL BARU: Pengisian Biodata Sekolah & Kepala Sekolah
+    if menu_admin == "📥 Pengaturan Biodata & Kop Sekolah":
+        st.subheader("📥 Manajemen Instansi & Identitas Kepala Sekolah")
+        st.write("Data yang diisi di sini akan otomatis menjadi Kop Surat dan identitas tanda tangan resmi pada seluruh berkas aplikasi.")
+        
+        current_bio = ambil_biodata_sekolah()
+        
+        with st.form("form_biodata_sekolah_db"):
+            in_kab = st.text_input("Nama Tingkat Wilayah (Baris 1 Kop)", value=current_bio['kab_kota'])
+            in_dinas = st.text_input("Nama Instansi / Dinas (Baris 2 Kop)", value=current_bio['dinas'])
+            in_sekolah = st.text_input("Nama Satuan Pendidikan / Sekolah (Baris 3 Kop)", value=current_bio['sekolah'])
+            in_alamat = st.text_input("Alamat Lengkap & Kontak Sekolah (Baris 4 Kop)", value=current_bio['alamat'])
+            
+            st.markdown("##### 🖋️ Identitas Kepala Sekolah")
+            in_kepsek = st.text_input("Nama Lengkap Kepala Sekolah", value=current_bio['kepsek'])
+            in_nip = st.text_input("NIP Kepala Sekolah", value=current_bio['nip_kepsek'])
+            
+            if st.form_submit_button("💾 Simpan Perubahan Biodata Instansi", use_container_width=True):
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute('''UPDATE biodata_sekolah SET 
+                                nama_kab_kota=?, nama_dinas=?, nama_sekolah=?, alamat_sekolah=?, nama_kepsek=?, nip_kepsek=? 
+                             WHERE id=1''', (in_kab, in_dinas, in_sekolah, in_alamat, in_kepsek, in_nip))
+                conn.commit()
+                conn.close()
+                st.success("Sukses! Biodata instansi berhasil diperbarui secara permanen.")
+                st.rerun()
+
+    elif menu_admin == "📊 Grafik Analisis Makro":
         st.subheader("Analisis Grafik Kehadiran Siswa (Umum/Harian)")
         conn = get_db_connection()
         df_absensi = pd.read_sql_query('''
@@ -374,9 +541,6 @@ if st.session_state.role == "Admin":
             
             if 'html_surat_temp' in st.session_state:
                 st.markdown("### 📄 Pratinjau Surat Resmi (Siap Cetak)")
-                
-                # --- PERBAIKAN TOTAL DI SINI (MENGGUNAKAN st.components.v1.html) ---
-                # Menggunakan iframe html agar terisolasi sempurna dan kotak hitam hilang total dari layar
                 st.components.v1.html(
                     f"""
                     <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #ccc; min-height: 600px;">
@@ -386,7 +550,6 @@ if st.session_state.role == "Admin":
                     height=700,
                     scrolling=True
                 )
-                # -------------------------------------------------------------------
                 
                 st.write("")
                 st.download_button(
@@ -603,25 +766,60 @@ elif st.session_state.role == "Guru":
         with col_g1: g_bulan = st.selectbox("Pilih Bulan", [f"{i:02d}" for i in range(1, 13)], index=datetime.date.today().month - 1, key="g_bln")
         with col_g2: g_tahun = st.selectbox("Pilih Tahun", [str(datetime.date.today().year), str(datetime.date.today().year - 1)], key="g_thn")
         g_periode = f"{g_tahun}-{g_bulan}-%"
-        if st.button("📊 Unduh Rekapan Excel Kelas Saya", type="primary", use_container_width=True):
-            conn = get_db_connection()
-            df_rekap_guru = pd.read_sql_query('''
-                SELECT s.kelas as [Kelas], s.nisn as [NISN], s.nama as [Nama Siswa],
-                       SUM(CASE WHEN LOWER(a.status) = 'hadir' AND a.jam_ke = 'Harian' THEN 1 ELSE 0 END) as [Total Hadir],
-                       SUM(CASE WHEN LOWER(a.status) = 'sakit' AND a.jam_ke = 'Harian' THEN 1 ELSE 0 END) as [Total Sakit/Izin],
-                       SUM(CASE WHEN LOWER(a.status) = 'tidak_hadir' AND a.jam_ke = 'Harian' THEN 1 ELSE 0 END) as [Total Alpa]
-                FROM siswa s
-                LEFT JOIN absensi a ON s.nisn = a.nisn AND a.tanggal LIKE ?
-                WHERE s.kelas = ?
-                GROUP BY s.nisn
-                ORDER BY s.nama ASC
-            ''', conn, params=(g_periode, pilihan_kelas))
-            conn.close()
-            if not df_rekap_guru.empty:
-                buffer = io.BytesIO()
-                with pd.ExcelWriter(buffer, engine='openpyxl') as writer: df_rekap_guru.to_excel(writer, sheet_name='Rekap', index=False)
-                st.download_button(label=f"📥 Download File Excel Kelas {pilihan_kelas}", data=buffer.getvalue(), file_name=f"Rekap_{pilihan_kelas}_{g_bulan}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-            else: st.warning("Tidak ditemukan data absensi periode bulan ini.")
+        
+        conn = get_db_connection()
+        df_rekap_guru = pd.read_sql_query('''
+            SELECT s.kelas as [Kelas], s.nisn as [NISN], s.nama as [Nama Siswa],
+                   SUM(CASE WHEN LOWER(a.status) = 'hadir' AND a.jam_ke = 'Harian' THEN 1 ELSE 0 END) as [Total Hadir],
+                   SUM(CASE WHEN LOWER(a.status) = 'sakit' AND a.jam_ke = 'Harian' THEN 1 ELSE 0 END) as [Total Sakit/Izin],
+                   SUM(CASE WHEN LOWER(a.status) = 'tidak_hadir' AND a.jam_ke = 'Harian' THEN 1 ELSE 0 END) as [Total Alpa]
+            FROM siswa s
+            LEFT JOIN absensi a ON s.nisn = a.nisn AND a.tanggal LIKE ?
+            WHERE s.kelas = ?
+            GROUP BY s.nisn
+            ORDER BY s.nama ASC
+        ''', conn, params=(g_periode, pilihan_kelas))
+        conn.close()
+        
+        col_btn_excel, col_btn_surat = st.columns(2)
+        
+        with col_btn_excel:
+            if st.button("📊 Unduh Rekapan Excel (.xlsx)", type="primary", use_container_width=True):
+                if not df_rekap_guru.empty:
+                    buffer = io.BytesIO()
+                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer: df_rekap_guru.to_excel(writer, sheet_name='Rekap', index=False)
+                    st.download_button(label=f"📥 Ambil File Excel Kelas {pilihan_kelas}", data=buffer.getvalue(), file_name=f"Rekap_{pilihan_kelas}_{g_bulan}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+                else: st.warning("Tidak ditemukan data absensi periode bulan ini.")
+                
+        with col_btn_surat:
+            if st.button("🖨️ Buat Surat Laporan Dinas (.html)", use_container_width=True):
+                if not df_rekap_guru.empty:
+                    # KUSTOM BARU: st.session_state.nama disuapkan langsung agar nama Wali Kelas tercetak otomatis
+                    html_dinas = buat_rekap_dinas_html(pilihan_kelas, g_bulan, g_tahun, df_rekap_guru, st.session_state.nama)
+                    st.session_state['html_rekap_dinas_temp'] = html_dinas
+                    st.success("Surat Laporan Dinas Berhasil Dibuat!")
+                else:
+                    st.warning("Tidak dapat membuat laporan dinas karena data bulan ini masih kosong.")
+                    
+        if 'html_rekap_dinas_temp' in st.session_state:
+            st.write("---")
+            st.markdown("### 📄 Pratinjau Surat Laporan Dinas Bulanan (Siap Cetak Fisik)")
+            st.components.v1.html(
+                f"""
+                <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #ccc; min-height: 500px;">
+                    {st.session_state['html_rekap_dinas_temp']}
+                </div>
+                """,
+                height=600,
+                scrolling=True
+            )
+            st.download_button(
+                label="📥 Download Surat Laporan Dinas Resmi Resmi (.html)",
+                data=st.session_state['html_rekap_dinas_temp'],
+                file_name=f"Laporan_Dinas_Bulanan_Kelas_{pilihan_kelas}_{g_bulan}.html",
+                mime="text/html",
+                use_container_width=True
+            )
 
     elif menu_guru == "📥 Sinkronisasi Data Dapodik":
         st.subheader(f"Unggah Template Siswa Khusus Kelas {pilihan_kelas}")
