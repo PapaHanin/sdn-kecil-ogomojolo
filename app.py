@@ -1,25 +1,33 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
+import sqlite3  # Kembali menggunakan SQLite lokal
 import datetime
 import plotly.express as px
 import urllib.parse
 import hashlib
 import io
+import os
 
 # ==========================================
-# CONFIGURATION & DATABASE INITIALIZATION
+# CONFIGURATION & DATABASE INITIALIZATION (LOKAL)
 # ==========================================
 st.set_page_config(page_title="Sistem Absensi Digital Terpadu (SUPER PREMIUM)", layout="wide", page_icon="💎")
 
-DB_FILE = "absensi_sekolah_premium.db"
+# Fungsi untuk membuka koneksi ke database lokal SQLite
+def get_db_connection():
+    # File database akan otomatis terbuat di folder yang sama dengan app.py
+    conn = sqlite3.connect("absensi_sekolah_premium.db")
+    conn.row_factory = sqlite3.Row  # Agar data bisa dibaca seperti kamus (dictionary)
+    return conn
 
 def hash_password(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
+    
+    # 1. Tabel Users
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY, 
                     password TEXT, 
@@ -27,25 +35,36 @@ def init_db():
                     nama TEXT,
                     kelas_tugas TEXT)''')
     
+    # 2. Tabel Siswa
     c.execute('''CREATE TABLE IF NOT EXISTS siswa (
                     nisn TEXT PRIMARY KEY, nama TEXT, kelas TEXT, nis TEXT, 
                     tempat_lahir TEXT, tanggal_lahir TEXT, agama TEXT, nik TEXT, 
                     alamat TEXT, nama_ayah TEXT, pekerjaan_ayah TEXT, nama_ibu TEXT, 
                     pekerjaan_ibu TEXT, no_wa_orang_tua TEXT)''')
     
+    # 3. Tabel Absensi
     c.execute('''CREATE TABLE IF NOT EXISTS absensi (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nisn TEXT, tanggal TEXT, status TEXT, waktu TEXT, guru_input TEXT,
+                    nisn TEXT, 
+                    tanggal TEXT, 
+                    status TEXT, 
+                    waktu TEXT, 
+                    guru_input TEXT,
                     mapel TEXT DEFAULT 'Wali Kelas / Umum',
                     jam_ke TEXT DEFAULT 'Harian',
                     FOREIGN KEY(nisn) REFERENCES siswa(nisn),
                     UNIQUE(nisn, tanggal, mapel, jam_ke))''')
         
+    # 4. Tabel Laporan Tindak Lanjut
     c.execute('''CREATE TABLE IF NOT EXISTS laporan_tindak_lanjut (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nisn TEXT, tanggal TEXT, catatan TEXT, status_wa TEXT,
+                    nisn TEXT, 
+                    tanggal TEXT, 
+                    catatan TEXT, 
+                    status_wa TEXT,
                     FOREIGN KEY(nisn) REFERENCES siswa(nisn))''')
                     
+    # 5. Tabel Aduan Curhat
     c.execute('''CREATE TABLE IF NOT EXISTS aduan_curhat (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     tanggal TEXT,
@@ -55,7 +74,7 @@ def init_db():
                     status_tindak_lanjut TEXT DEFAULT 'Belum Dibaca',
                     catatan_kepsek TEXT DEFAULT '-')''')
                     
-    # FITUR BARU: Tabel Penyimpan Biodata & Kop Sekolah Otomatis
+    # 6. Tabel Biodata Sekolah
     c.execute('''CREATE TABLE IF NOT EXISTS biodata_sekolah (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     nama_kab_kota TEXT DEFAULT 'PEMERINTAH KABUPATEN / KOTA',
@@ -64,21 +83,26 @@ def init_db():
                     alamat_sekolah TEXT DEFAULT 'Alamat: Jalan Raya Pendidikan No. 1, Kode Pos 12345 Telp. (021) 123456',
                     nama_kepsek TEXT DEFAULT '____________________________',
                     nip_kepsek TEXT DEFAULT '........................................')''')
+                    
+    # 7. Tabel Status Lisensi Aplikasi
+    c.execute('''CREATE TABLE IF NOT EXISTS lisensi_aplikasi (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    status_aktif TEXT DEFAULT 'Trial',
+                    tanggal_mulai TEXT,
+                    serial_terpasang TEXT DEFAULT '-')''')
     
-    # Isi data bawaan awal jika tabel biodata masih kosong
+    # Isi data bawaan instansi jika kosong
     c.execute("SELECT COUNT(*) FROM biodata_sekolah")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO biodata_sekolah (id) VALUES (1)")
+        
+    # Isi data bawaan lisensi jika kosong
+    c.execute("SELECT COUNT(*) FROM lisensi_aplikasi")
+    if c.fetchone()[0] == 0:
+        hari_ini_str = str(datetime.date.today())
+        c.execute("INSERT INTO lisensi_aplikasi (id, status_aktif, tanggal_mulai) VALUES (1, 'Trial', ?)", (hari_ini_str,))
     
-    try:
-        c.execute("ALTER TABLE absensi ADD COLUMN mapel TEXT DEFAULT 'Wali Kelas / Umum'")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        c.execute("ALTER TABLE absensi ADD COLUMN jam_ke TEXT DEFAULT 'Harian'")
-    except sqlite3.OperationalError:
-        pass
-    
+    # Cek akun admin bawaan (Password: admin123)
     c.execute("SELECT * FROM users WHERE username='admin'")
     if not c.fetchone():
         hashed_admin = hash_password("admin123")
@@ -87,8 +111,10 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Jalankan Inisialisasi Tabel di Komputer Lokal
 init_db()
 
+# [KODE SISANYA DI BAWAH TETAP SAMA]
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = ""
@@ -97,9 +123,67 @@ if 'logged_in' not in st.session_state:
     st.session_state.kelas_tugas = ""
 
 def get_db_connection():
-    return sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect("absensi_sekolah_premium.db")
+    conn.row_factory = sqlite3.Row
+    return conn
+    
+# FITUR BARU: Fungsi Pengunci Sistem & Validasi Serial Key Berdurasi 30 Hari
+def proteksi_sistem_lisensi():
+    # KUNCI RAHASIA BAPAK (Silakan diganti sesuai selera, jaga kerahasiaannya)
+    SERIAL_KEY_RESMI = "HANIN_PREMIUM_REKAP_2026"
+    DURASI_TRIAL_HARI = 30
+    
+    conn = get_db_connection()
+    res = conn.execute("SELECT status_aktif, tanggal_mulai, serial_terpasang FROM lisensi_aplikasi WHERE id=1").fetchone()
+    conn.close()
+    
+    status_aktif, tanggal_mulai_str, serial_terpasang = res
+    
+    # Jika sudah diaktivasi dengan kode yang benar, lolos tanpa batasan waktu
+    if status_aktif == "Permanen" and serial_terpasang == SERIAL_KEY_RESMI:
+        return
+        
+    # Hitung sisa hari jika status masih Trial
+    tgl_mulai = datetime.datetime.strptime(tanggal_mulai_str, "%Y-%m-%d").date()
+    hari_ini = datetime.date.today()
+    selisih_hari = (hari_ini - tgl_mulai).days
+    sisa_hari = DURASI_TRIAL_HARI - selisih_hari
+    
+    # Tampilkan info masa trial di pojok atas aplikasi selama masih berlaku
+    if sisa_hari >= 0:
+        st.sidebar.warning(f"⏳ MODE TRIAL: Sisa {sisa_hari} Hari Lagi.")
+    else:
+        # Jika waktu habis, kunci total layar aplikasi
+        st.markdown("<h2 style='text-align: center; color: #EF4444;'>🚨 MASA UJI COBA (TRIAL) TELAH HABIS</h2>", unsafe_allow_html=True)
+        st.markdown(f"""
+            <div style="background-color: #FEE2E2; padding: 25px; border-radius: 8px; border: 1px solid #EF4444; color: #000; margin-bottom: 20px;">
+                <p style="font-size: 16px; text-align: center;">Masa uji coba gratis 30 hari sistem absensi premium di sekolah ini telah berakhir.</p>
+                <p style="font-size: 16px; font-weight: bold; text-align: center;">Untuk mengaktifkan lisensi permanen, silakan hubungi Developer untuk mendapatkan Serial Key resmi:</p>
+                <h3 style="color: #4F46E5; text-align: center; margin: 15px 0;">📞 Kontak Developer: 0822-9056-9062 (Papa Hanin)</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Sediakan kolom input aktivasi langsung di layar kunci
+        with st.container():
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                with st.form("aktivasi_kunci_layar"):
+                    input_key = st.text_input("🔑 Masukkan Serial Key Aktivasi Resmi:", type="password")
+                    if st.form_submit_button("🔥 Aktifkan Aplikasi Selamanya", use_container_width=True):
+                        if input_key.strip() == SERIAL_KEY_RESMI:
+                            conn = get_db_connection()
+                            conn.execute("UPDATE lisensi_aplikasi SET status_aktif='Permanen', serial_terpasang=? WHERE id=1", (SERIAL_KEY_RESMI,))
+                            conn.commit()
+                            conn.close()
+                            st.success("🎉 Sukses! Lisensi Permanen Aktif. Silakan Muat Ulang Halaman.")
+                            st.rerun()
+                        else:
+                            st.error("Serial Key salah! Periksa kembali atau hubungi pengembang.")
+        st.stop()
 
-# FITUR BARU: Ambil data biodata sekolah untuk Kop & Ttd Otomatis
+# Jalankan proteksi sistem sebelum masuk halaman login/aplikasi
+proteksi_sistem_lisensi()
+
 def ambil_biodata_sekolah():
     conn = get_db_connection()
     res = conn.execute("SELECT nama_kab_kota, nama_dinas, nama_sekolah, alamat_sekolah, nama_kepsek, nip_kepsek FROM biodata_sekolah WHERE id=1").fetchone()
@@ -122,7 +206,6 @@ def kirim_wa_link(no_wa, nama_siswa, kelas, status, konteks_absen="Hari ini"):
     pesan_encoded = urllib.parse.quote(pesan)
     return f"https://wa.me/{clean_wa}?text={pesan_encoded}"
 
-# Fungsi bantu cetak surat resmi pemanggilan ortu (Sudah Otomatis Biodata DB)
 def buat_surat_html(nama_siswa, kelas, nisn, alasan, detail_kasus="-"):
     hari_ini_str = datetime.date.today().strftime("%d %B %Y")
     bio = ambil_biodata_sekolah()
@@ -220,7 +303,6 @@ def buat_surat_html(nama_siswa, kelas, nisn, alasan, detail_kasus="-"):
     '''
     return html_content
 
-# Fungsi pembentuk dokumen surat dinas rekap bulanan sekolah (Sudah Otomatis Biodata & Wali Kelas)
 def buat_rekap_dinas_html(kelas, bulan, tahun, df_rekap, nama_wali_kelas):
     hari_ini_str = datetime.date.today().strftime("%d %B %Y")
     bio = ambil_biodata_sekolah()
@@ -321,6 +403,7 @@ def buat_rekap_dinas_html(kelas, bulan, tahun, df_rekap, nama_wali_kelas):
                     <b>Guru Kelas / Wali Kelas</b>
                     <br><br><br><br><br>
                     <u><b>( {nama_wali_kelas} )</b></u><br>
+                    NIP. ........................................
                 </td>
             </tr>
         </table>
@@ -332,7 +415,7 @@ def buat_rekap_dinas_html(kelas, bulan, tahun, df_rekap, nama_wali_kelas):
 # HALAMAN LOGIN SYSTEM
 # ==========================================
 if not st.session_state.logged_in:
-    st.markdown("<h2 style='text-align: center; color: #4F46E5;'>💎 ABSENSI DIGITAL SDN KECIL OGOMOJOLO</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #4F46E5;'>💎 LOGIN ABSENSI DIGITAL PREMIUM</h2>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         with st.form("login_form"):
@@ -373,7 +456,7 @@ if st.session_state.role == "Admin":
     st.sidebar.markdown("### 🏛️ MENU UTAMA KEPSEK")
     menu_admin = st.sidebar.radio("Pilih Menu Panel:", [
         "📊 Grafik Analisis Makro",
-        "📥 Pengaturan Biodata & Kop Sekolah", # FITUR BARU: Menu Isian Biodata Sekolah
+        "📥 Pengaturan Biodata & Kop Sekolah",
         "📥 Kotak Aduan & Curhat Guru",
         "🚨 Rekap Siswa Bermasalah",
         "✉️ Surat Pemanggilan Ortu",
@@ -405,7 +488,6 @@ if st.session_state.role == "Admin":
     with col_m4: st.metric(label="Siswa Alpa Harian", value=f"{total_alpa} Anak")
     st.write("---")
 
-    # PANEL BARU: Pengisian Biodata Sekolah & Kepala Sekolah
     if menu_admin == "📥 Pengaturan Biodata & Kop Sekolah":
         st.subheader("📥 Manajemen Instansi & Identitas Kepala Sekolah")
         st.write("Data yang diisi di sini akan otomatis menjadi Kop Surat dan identitas tanda tangan resmi pada seluruh berkas aplikasi.")
@@ -794,7 +876,6 @@ elif st.session_state.role == "Guru":
         with col_btn_surat:
             if st.button("🖨️ Buat Surat Laporan Dinas (.html)", use_container_width=True):
                 if not df_rekap_guru.empty:
-                    # KUSTOM BARU: st.session_state.nama disuapkan langsung agar nama Wali Kelas tercetak otomatis
                     html_dinas = buat_rekap_dinas_html(pilihan_kelas, g_bulan, g_tahun, df_rekap_guru, st.session_state.nama)
                     st.session_state['html_rekap_dinas_temp'] = html_dinas
                     st.success("Surat Laporan Dinas Berhasil Dibuat!")
